@@ -1,0 +1,56 @@
+void GameManager::FixedUpdate() {
+	if (UI->isPaused()) {
+		return;
+	}
+	//Clear the quad tree
+	quadTree.clear();
+	//playerPos = sf::Vector2f(entities[0]->getGlobalBounds().left, entities[0]->getGlobalBounds().top);
+	for (int i = 0; i < entities.size(); i++) {
+		entities[i]->FixedUpdate();
+	}
+	for (int i = 0; i < bullets.size(); i++) {
+		bullets[i]->FixedUpdate();
+		//Insert a new point into the quad tree with the updated position
+		Point* p = new Point("Bullet", bullets[i]->getGlobalBounds(), i);
+		quadTree.insert(p);
+	}
+	for (int i = 0; i < enemies.size(); i++) {
+		enemies[i]->FixedUpdate();
+		//Insert a new point into the quad tree with the updated position
+		Point* p = new Point("Enemy", enemies[i]->getGlobalBounds(),i);
+		quadTree.insert(p);
+	}
+
+	Point* playerPoint = new Point("Player", player->getGlobalBounds(), -1);
+	quadTree.insert(playerPoint);
+
+	for (int i = 0; i < bullets.size(); i++) {
+		std::vector<Point*> points = quadTree.queryRange(bullets[i]->getGlobalBounds());
+		for (int j = 0; j < points.size(); j++) {
+			//We dont want collision detection with bullets and itself
+			if (points[j]->tag != "Bullet") {
+				if (points[j]->tag == "Enemy" && bullets[i]->playerShoot && enemies[points[j]->index]->getGlobalBounds().intersects(bullets[i]->getGlobalBounds())) {
+					enemies[points[j]->index]->TakeDamage(bullets[i]->damageAmount);
+					bullets[i]->toRemove = true;
+				}
+				else if (points[j]->tag == "Player" && !bullets[i]->playerShoot && player->getGlobalBounds().intersects(bullets[i]->getGlobalBounds())) {
+					player->TakeDamage(bullets[i]->damageAmount);
+					bullets[i]->toRemove = true;
+				}
+
+
+			}
+			
+		}
+	}
+	for (int i = 0; i < bullets.size(); i++) {
+		if (bullets[i]->toRemove) { 
+			bullets.erase(bullets.begin() + i);
+		}
+	}
+	for (int i = 0; i < enemies.size(); i++) {
+		if (enemies[i]->toRemove) {
+			enemies.erase(enemies.begin() + i);
+		}
+	}
+}
